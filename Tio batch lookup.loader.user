@@ -1,0 +1,18 @@
+// ==UserScript==
+// @name         Test IO — Batch Profile Lookup (Loader)
+// @namespace    https://tester.test.io/
+// @version      1.0.0
+// @description  Loads the Test IO Batch Profile Lookup script directly from GitHub.
+// @author       Charlie / Test IO Onboarding
+// @match        https://discord.com/*
+// @grant        GM_xmlhttpRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @connect      tester.test.io
+// @require      https://raw.githubusercontent.com/CharlieMrFox/testio-batch-lookup/refs/heads/main/Testio%20batch%20lookup.user
+// @run-at       document-idle
+// ==/UserScript==
+
+// This file is intentionally empty.
+// The entire script is loaded via @require from the GitHub repository above.
+// To update the script, push changes to the repo — no reinstall needed.
