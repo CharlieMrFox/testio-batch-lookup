@@ -1,0 +1,538 @@
+// ==UserScript==
+// @name         Test IO — Batch Profile Lookup
+// @namespace    https://tester.test.io/
+// @version      1.2.0
+// @description  Open a modal on Discord, enter any number of names, and check which ones have a Test IO profile.
+// @author       Charlie / Test IO Onboarding
+// @match        https://discord.com/*
+// @grant        GM_xmlhttpRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @connect      tester.test.io
+// @run-at       document-idle
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    // ─── Config ────────────────────────────────────────────────────────────────
+    const PROFILE_BASE_URL = 'https://tester.test.io/profile_pages/';
+    const MODAL_ID         = 'tio-batch-modal';
+    const TRIGGER_KEY      = 'T';  // Alt + T to open
+
+    // ─── Slug helper (mirrors the original script) ─────────────────────────────
+    function formatSlug(name) {
+        return name
+            .toLowerCase()
+            .replace(/\s+/g, '_')
+            .replace(/\./g, '_')
+            .replace(/[^a-z0-9_]/g, '');
+    }
+
+    // ─── Profile check via GM_xmlhttpRequest (bypasses CORS) ──────────────────
+    function checkProfile(name) {
+        return new Promise((resolve) => {
+            const slug = formatSlug(name);
+            const url  = PROFILE_BASE_URL + slug;
+
+            GM_xmlhttpRequest({
+                method:  'HEAD',
+                url,
+                timeout: 8000,
+                onload:  (res) => resolve({ name, slug, url, found: res.status === 200 }),
+                onerror: ()    => resolve({ name, slug, url, found: false }),
+                ontimeout: ()  => resolve({ name, slug, url, found: false, timedOut: true }),
+            });
+        });
+    }
+
+    // ─── Modal styles ──────────────────────────────────────────────────────────
+    const STYLES = `
+        #tio-batch-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: tio-fade-in 0.15s ease;
+        }
+
+        @keyframes tio-fade-in {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        #${MODAL_ID} {
+            background: #313338;
+            border: 1px solid #1e1f22;
+            border-radius: 10px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+            width: 440px;
+            max-width: calc(100vw - 32px);
+            font-family: 'gg sans', 'Noto Sans', Whitney, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #dbdee1;
+            overflow: hidden;
+            animation: tio-slide-up 0.18s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        @keyframes tio-slide-up {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0)    scale(1);    }
+        }
+
+        #tio-modal-header {
+            background: #2b2d31;
+            padding: 16px 20px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #1e1f22;
+        }
+
+        #tio-modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #f2f3f5;
+            letter-spacing: -0.01em;
+        }
+
+        #tio-modal-title span {
+            color: #00b0f4;
+        }
+
+        #tio-close-btn {
+            background: none;
+            border: none;
+            color: #80848e;
+            cursor: pointer;
+            font-size: 20px;
+            line-height: 1;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: color 0.1s, background 0.1s;
+        }
+        #tio-close-btn:hover {
+            color: #dbdee1;
+            background: #404249;
+        }
+
+        #tio-modal-body {
+            padding: 20px;
+        }
+
+        #tio-hint {
+            font-size: 12px;
+            color: #80848e;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        #tio-names-input {
+            width: 100%;
+            height: 180px;
+            background: #1e1f22;
+            border: 1.5px solid #1e1f22;
+            border-radius: 6px;
+            color: #dbdee1;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13.5px;
+            line-height: 1.7;
+            padding: 10px 12px;
+            resize: none;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        #tio-names-input:focus {
+            border-color: #5865f2;
+        }
+        #tio-names-input::placeholder {
+            color: #4e5058;
+        }
+
+        #tio-counter {
+            font-size: 11px;
+            color: #4e5058;
+            text-align: right;
+            margin-top: 5px;
+            transition: color 0.15s;
+        }
+        #tio-counter.warn {
+            color: #faa81a;
+        }
+
+        #tio-check-btn {
+            display: block;
+            width: 100%;
+            margin-top: 14px;
+            padding: 11px;
+            background: #5865f2;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            letter-spacing: 0.01em;
+        }
+        #tio-check-btn:hover:not(:disabled) {
+            background: #4752c4;
+        }
+        #tio-check-btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+        #tio-check-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #tio-results {
+            margin-top: 16px;
+            background: #2b2d31;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        #tio-results-summary {
+            padding: 12px 16px 10px;
+            font-size: 13px;
+            border-bottom: 1px solid #1e1f22;
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .tio-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+        }
+        .tio-stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .tio-found-dot   { background: #23a55a; }
+        .tio-missing-dot { background: #f23f43; }
+
+        #tio-results-list {
+            padding: 10px 16px 14px;
+            max-height: 180px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        #tio-results-list::-webkit-scrollbar       { width: 4px; }
+        #tio-results-list::-webkit-scrollbar-track  { background: transparent; }
+        #tio-results-list::-webkit-scrollbar-thumb  { background: #404249; border-radius: 2px; }
+
+        .tio-result-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .tio-result-row:last-child { border-bottom: none; }
+
+        .tio-badge {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            min-width: 52px;
+            text-align: center;
+        }
+        .tio-badge-found   { background: rgba(35,165,90,0.2);  color: #23a55a; }
+        .tio-badge-missing { background: rgba(242,63,67,0.2);  color: #f23f43; }
+        .tio-badge-timeout { background: rgba(250,168,26,0.2); color: #faa81a; }
+
+        .tio-result-name {
+            flex: 1;
+            color: #dbdee1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-decoration: none;
+        }
+        .tio-result-name:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+        .tio-result-link {
+            color: #00b0f4;
+            font-size: 11px;
+            text-decoration: none;
+            opacity: 0.7;
+            transition: opacity 0.1s;
+            flex-shrink: 0;
+        }
+        .tio-result-link:hover { opacity: 1; text-decoration: underline; }
+
+        .tio-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #40444b;
+            border-top-color: #5865f2;
+            border-radius: 50%;
+            animation: tio-spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes tio-spin {
+            to { transform: rotate(360deg); }
+        }
+    `;
+
+    // ─── Inject styles ─────────────────────────────────────────────────────────
+    function injectStyles() {
+        if (document.getElementById('tio-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'tio-styles';
+        style.textContent = STYLES;
+        document.head.appendChild(style);
+    }
+
+    // ─── Parse names from textarea ─────────────────────────────────────────────
+    function parseNames(raw) {
+        return raw
+            .split('\n')
+            .map(l => l.trim())
+            .filter(l => l.length > 0);
+    }
+
+    // ─── Build & show modal ────────────────────────────────────────────────────
+    function openModal() {
+        if (document.getElementById(MODAL_ID)) return;  // already open
+        injectStyles();
+
+        // Overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'tio-batch-modal-overlay';
+
+        // Modal wrapper
+        const modal = document.createElement('div');
+        modal.id = MODAL_ID;
+
+        // ── Header ──
+        const header = document.createElement('div');
+        header.id = 'tio-modal-header';
+        header.innerHTML = `
+            <div id="tio-modal-title">🔍 Test IO <span>Batch Lookup</span></div>
+            <button id="tio-close-btn" title="Close (Esc)">✕</button>
+        `;
+        modal.appendChild(header);
+
+        // ── Body ──
+        const body = document.createElement('div');
+        body.id = 'tio-modal-body';
+        body.innerHTML = `
+            <div id="tio-hint">Enter Discord display names (one per line). The script will check each against the Test IO profile directory.</div>
+            <textarea
+                id="tio-names-input"
+                placeholder="e.g.&#10;john_doe&#10;Jane Smith&#10;tester.pro"
+                spellcheck="false"
+            ></textarea>
+            <div id="tio-counter">0 names</div>
+            <button id="tio-check-btn" disabled>Check Profiles</button>
+            <div id="tio-results">
+                <div id="tio-results-summary"></div>
+                <div id="tio-results-list"></div>
+            </div>
+        `;
+        modal.appendChild(body);
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        // ── Wire up refs ──
+        const textarea   = document.getElementById('tio-names-input');
+        const counter    = document.getElementById('tio-counter');
+        const checkBtn   = document.getElementById('tio-check-btn');
+        const results    = document.getElementById('tio-results');
+        const summary    = document.getElementById('tio-results-summary');
+        const list       = document.getElementById('tio-results-list');
+        const closeBtn   = document.getElementById('tio-close-btn');
+
+        // ── Restore previously saved names ──
+        const saved = GM_getValue('tio_saved_names', '');
+        if (saved) {
+            textarea.value = saved;
+            const restoredCount = parseNames(saved).length;
+            counter.textContent = `${restoredCount} name${restoredCount !== 1 ? 's' : ''}`;
+            checkBtn.disabled = restoredCount === 0;
+        }
+
+        // ── Counter / enable button / persist ──
+        textarea.addEventListener('input', () => {
+            const names = parseNames(textarea.value);
+            const count = names.length;
+            counter.textContent = `${count} name${count !== 1 ? 's' : ''}`;
+            checkBtn.disabled = count === 0;
+
+            // Save current content so it survives modal close/reopen
+            GM_setValue('tio_saved_names', textarea.value);
+        });
+
+        // ── Check button ──
+        checkBtn.addEventListener('click', async () => {
+            const names = parseNames(textarea.value);
+            if (names.length === 0) return;
+
+            // Lock UI
+            checkBtn.disabled = true;
+            textarea.disabled = true;
+            checkBtn.innerHTML = `<span class="tio-spinner"></span>Checking ${names.length} name${names.length > 1 ? 's' : ''}…`;
+
+            // Show results area with loading state
+            results.style.display = 'block';
+            summary.innerHTML = `<span style="color:#80848e; font-size:13px;"><span class="tio-spinner"></span>Running ${names.length} check${names.length > 1 ? 's' : ''} in parallel…</span>`;
+            list.innerHTML = '';
+
+            // Fire all checks in parallel
+            const checks = await Promise.all(names.map(checkProfile));
+
+            // Tally
+            const found   = checks.filter(r => r.found);
+            const missing = checks.filter(r => !r.found);
+
+            // Summary row
+            summary.innerHTML = `
+                <div class="tio-stat">
+                    <span class="tio-stat-dot tio-found-dot"></span>
+                    <span>${found.length} found</span>
+                </div>
+                <div class="tio-stat">
+                    <span class="tio-stat-dot tio-missing-dot"></span>
+                    <span>${missing.length} not found</span>
+                </div>
+                <div style="color:#4e5058; font-size:11px; align-self:center;">${checks.length} checked</div>
+            `;
+
+            // Result rows — found first, then missing
+            list.innerHTML = '';
+            [...found, ...missing].forEach(r => {
+                const row = document.createElement('div');
+                row.className = 'tio-result-row';
+
+                const badgeClass = r.found
+                    ? 'tio-badge-found'
+                    : (r.timedOut ? 'tio-badge-timeout' : 'tio-badge-missing');
+                const badgeLabel = r.found
+                    ? 'FOUND'
+                    : (r.timedOut ? 'TIMEOUT' : 'MISSING');
+
+                row.innerHTML = `
+                    <span class="tio-badge ${badgeClass}">${badgeLabel}</span>
+                    <a class="tio-result-name" href="${r.url}" target="_blank" rel="noopener" title="Open profile: ${r.url}">${r.name}</a>
+                    ${r.found
+                        ? `<a class="tio-result-link" href="${r.url}" target="_blank" rel="noopener">→ view profile</a>`
+                        : `<span class="tio-result-link" style="color:#4e5058; cursor:default;">/${r.slug}</span>`
+                    }
+                `;
+                list.appendChild(row);
+            });
+
+            // Unlock UI
+            checkBtn.disabled = false;
+            textarea.disabled = false;
+            checkBtn.textContent = 'Check Again';
+        });
+
+        // ── Close helpers ──
+        function close() {
+            overlay.remove();
+        }
+
+        closeBtn.addEventListener('click', close);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+        });
+
+        // Focus textarea
+        textarea.focus();
+    }
+
+    // ─── Keyboard trigger: Alt + T ─────────────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+        if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === TRIGGER_KEY) {
+            e.preventDefault();
+            if (document.getElementById(MODAL_ID)) {
+                document.getElementById('tio-batch-modal-overlay')?.remove();
+            } else {
+                openModal();
+            }
+        }
+
+        // Esc closes
+        if (e.key === 'Escape') {
+            document.getElementById('tio-batch-modal-overlay')?.remove();
+        }
+    });
+
+    // ─── Floating trigger button ───────────────────────────────────────────────
+    function addFloatingButton() {
+        if (document.getElementById('tio-fab')) return;
+
+        const btn = document.createElement('button');
+        btn.id    = 'tio-fab';
+        btn.title = 'Test IO Batch Lookup  (Alt+T)';
+        btn.textContent = 'TIO';
+
+        Object.assign(btn.style, {
+            position:     'fixed',
+            bottom:       '24px',
+            right:        '24px',
+            zIndex:       '9997',
+            width:        '44px',
+            height:       '44px',
+            borderRadius: '50%',
+            background:   '#5865f2',
+            color:        '#fff',
+            border:       'none',
+            cursor:       'pointer',
+            fontSize:     '10px',
+            fontWeight:   '800',
+            letterSpacing:'0.04em',
+            boxShadow:    '0 4px 14px rgba(0,0,0,0.4)',
+            transition:   'transform 0.15s, background 0.15s',
+        });
+
+        btn.addEventListener('mouseenter', () => {
+            btn.style.transform  = 'scale(1.1)';
+            btn.style.background = '#4752c4';
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.style.transform  = 'scale(1)';
+            btn.style.background = '#5865f2';
+        });
+        btn.addEventListener('click', openModal);
+
+        document.body.appendChild(btn);
+    }
+
+    // Wait for Discord's UI to settle, then add the FAB
+    const observer = new MutationObserver(() => {
+        if (document.querySelector('[class*="sidebar"]') || document.querySelector('[class*="channelName"]')) {
+            addFloatingButton();
+            observer.disconnect();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Fallback: add after 3 s regardless
+    setTimeout(addFloatingButton, 3000);
+
+})();
