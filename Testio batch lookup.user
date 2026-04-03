@@ -3,7 +3,7 @@
 // @namespace    https://tester.test.io/
 // @version      1.2.0
 // @description  Open a modal on Discord, enter any number of names, and check which ones have a Test IO profile.
-// @author       Charlie / Test IO Onboarding
+// @author       Charlie
 // @match        https://discord.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
