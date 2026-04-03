@@ -83,4 +83,4 @@ To force an immediate cache refresh, append a version query string to the `@requ
 
 ## Licence
 
-[MIT](LICENSE) © Charlie / Test IO Onboarding Team
+[MIT](LICENSE) © Charlie / Test IO Community Building Team
