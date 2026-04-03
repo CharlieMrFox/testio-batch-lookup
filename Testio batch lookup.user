@@ -489,7 +489,7 @@
         const btn = document.createElement('button');
         btn.id    = 'tio-fab';
         btn.title = 'Test IO Batch Lookup  (Alt+T)';
-        btn.textContent = 'TIO';
+        btn.textContent = '🔎';
 
         Object.assign(btn.style, {
             position:     'fixed',
