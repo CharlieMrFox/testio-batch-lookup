@@ -20,21 +20,11 @@ A Discord userscript for the Test IO onboarding team. Enter any number of tester
 
 ## Installation
 
-### Option A — Install via loader (recommended)
-
-This method loads the script live from this repository. Any update pushed here is reflected immediately — no reinstall needed.
-
 1. Install the [Tampermonkey](https://www.tampermonkey.net/) browser extension
-2. Click **[Install Loader Script](https://raw.githubusercontent.com/CharlieMrFox/testio-batch-lookup/refs/heads/main/Testio%20batch%20lookup.user)**
+2. Click **[Install Script](https://github.com/CharlieMrFox/testio-batch-lookup/blob/main/Tio%20batch%20lookup.loader.user)**
 3. Tampermonkey will open an install prompt — click **Install**
 
-### Option B — Install the script directly
-
-1. Install [Tampermonkey](https://www.tampermonkey.net/)
-2. Click **[Install Script](https://raw.githubusercontent.com/CharlieMrFox/testio-batch-lookup/refs/heads/main/Tio%20batch%20lookup.loader.user)**
-3. Tampermonkey will open an install prompt — click **Install**
-
-> ⚠️ With Option B, you'll need to reinstall manually each time the script is updated.
+That's it. Updates are handled automatically — no reinstall ever needed.
 
 ---
 
@@ -51,12 +41,12 @@ This method loads the script live from this repository. Any update pushed here i
 
 ## Files
 
-| File | Where it lives | Purpose |
-|------|---------------|---------|
-| `tio-batch-lookup.user.js` | GitHub | The full userscript — update this to release changes |
-| `tio-batch-lookup.loader.user.js` | Tampermonkey | Installed in the browser; loads the script from GitHub via `@require` |
-| `README.md` | GitHub | This file |
-| `LICENSE` | GitHub | MIT licence |
+| File | Purpose |
+|------|---------|
+| `tio-batch-lookup.user.js` | The full userscript — push changes here to release updates |
+| `tio-batch-lookup.loader.user.js` | The install file — loads the script from this repo via `@require` |
+| `README.md` | This file |
+| `LICENSE` | MIT licence |
 
 ---
 
@@ -69,18 +59,16 @@ This method loads the script live from this repository. Any update pushed here i
 
 ---
 
-## Updating
+## Releasing updates
 
-Push changes to `tio-batch-lookup.user.js`. Users on the **loader** script will pick up changes automatically on their next Discord page load.
+1. Make your changes in `tio-batch-lookup.user.js`
+2. Bump the `@version` number in the header (e.g. `1.2.0` → `1.3.0`)
+3. Push to `main`
 
-To force an immediate cache refresh, append a version query string to the `@require` URL in the loader:
-
-```
-@require  https://raw.githubusercontent.com/YOUR_USERNAME/test-io-batch-lookup/main/tio-batch-lookup.user.js?v=1.3.0
-```
+Tampermonkey will detect the new version within 24 hours and update silently. Users on the loader script get changes on the next Discord page load — no action needed on either end.
 
 ---
 
 ## Licence
 
-[MIT](LICENSE) © Charlie / Test IO Community Building Team
+[MIT](LICENSE) © Charlie / Test IO Onboarding Team
