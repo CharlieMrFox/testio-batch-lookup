@@ -9,6 +9,8 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @connect      tester.test.io
+// @updateURL    https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/test-io-batch-lookup/main/tio-batch-lookup.user.js
+// @downloadURL  https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/test-io-batch-lookup/main/tio-batch-lookup.user.js
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -489,11 +491,11 @@
         const btn = document.createElement('button');
         btn.id    = 'tio-fab';
         btn.title = 'Test IO Batch Lookup  (Alt+T)';
-        btn.textContent = '⛔️';
+        btn.textContent = 'TIO';
 
         Object.assign(btn.style, {
             position:     'fixed',
-            bottom:       '50px',
+            bottom:       '24px',
             right:        '24px',
             zIndex:       '9997',
             width:        '44px',
