@@ -9,7 +9,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @connect      tester.test.io
-// @require      https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/test-io-batch-lookup/main/tio-batch-lookup.user.js
+// @require      https://raw.githubusercontent.com/CharlieMrFox/testio-batch-lookup/refs/heads/main/Testio%20batch%20lookup.user
 // @run-at       document-idle
 // ==/UserScript==
 
