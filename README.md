@@ -25,7 +25,7 @@ A Discord userscript for the Test IO onboarding team. Enter any number of tester
 This method loads the script live from this repository. Any update pushed here is reflected immediately — no reinstall needed.
 
 1. Install the [Tampermonkey](https://www.tampermonkey.net/) browser extension
-2. Click **[Install Loader Script](https://raw.githubusercontent.com/CharlieMrFox/testio-batch-lookup/refs/heads/main/Tio%20batch%20lookup.loader.user)**
+2. Click **[Install Loader Script](https://raw.githubusercontent.com/CharlieMrFox/testio-batch-lookup/refs/heads/main/Testio%20batch%20lookup.user)**
 3. Tampermonkey will open an install prompt — click **Install**
 
 ### Option B — Install the script directly
