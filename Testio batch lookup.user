@@ -491,11 +491,11 @@
         const btn = document.createElement('button');
         btn.id    = 'tio-fab';
         btn.title = 'Test IO Batch Lookup  (Alt+T)';
-        btn.textContent = 'TIO';
+        btn.textContent = '✅';
 
         Object.assign(btn.style, {
             position:     'fixed',
-            bottom:       '24px',
+            bottom:       '54px',
             right:        '24px',
             zIndex:       '9997',
             width:        '44px',
